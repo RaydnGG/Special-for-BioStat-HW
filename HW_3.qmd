@@ -1,0 +1,136 @@
+---
+title: "HW_3"
+format: html
+editor: visual
+---
+
+# Загрузка данных
+
+```{r}
+library(readxl)
+pima <- read_xlsx('data/pima.xlsx')
+str(pima)
+```
+
+## Расчет описательных статистик для 3х переменных
+
+```{r}
+library (dplyr)
+# создал функцию которая принимает датасет и список пееременных
+# а на выходе создает датасет со всеми описательными статистиками (нужными нам)
+describe_variables <- function(data, variables) {
+  data %>%
+    summarise(
+      across(all_of(variables), list(
+        count = ~n(),
+        mean = ~mean(.),
+        sd = ~sd(.),
+        quantile_1 = ~quantile(., 0.25),
+        quantile_3 = ~quantile(., 0.75),
+        min = ~min(.),
+        max = ~max(.)
+      ))
+    )
+}
+
+numeric_describe <- describe_variables(pima, c("glucose", "mass", "pressure"))
+numeric_describe
+```
+
+```{r}
+
+glucose_summary <- summarise(pima, count = n(), sd = sd(glucose), mean = mean(glucose), quantile_1 = quantile(glucose, 0.25), quantile_3 = quantile(glucose, 0.75), min = min(glucose), max = max(glucose))
+
+pressure_summary <- summarise(pima, count = n(), sd = sd(pressure), mean = mean(pressure), quantile_1 = quantile(pressure, 0.25), quantile_3 = quantile(pressure, 0.75), min = min(pressure),max = max(pressure))
+
+mass_summary <- summarise(pima, count = n(), sd = sd(mass), mean = mean(mass), quantile_1 = quantile(mass, 0.25), quantile_3 = quantile(mass, 0.75),min = min(mass), max = max(mass))
+
+glucose_summary
+pressure_summary
+mass_summary
+```
+
+Сделал в двух вариантах - первый мне по задумке нравился, но я не придумал как сделать в 3 строки этот датафрейм, а не все 3 переменные в одну и решил сделать еще через отдельные summarise
+
+## Расчет описательных статистик для diabetes
+
+```{r}
+
+# Расчет абсолютных частот:
+absolute_count <- table(pima$diabetes)
+
+# Расчет относительных частот:
+relative_count <- round(prop.table(absolute_count), digits = 2)
+
+# результаты:
+absolute_count
+relative_count
+
+```
+
+## Создайте на основе переменной `age` новую переменную `age_group`, которая будет отражать следующие возрастные группы: 21–35, 36–49 и 50+. Посчитайте описательную статистику для новой переменной.
+
+```{r}
+pima <- pima %>%
+  mutate(age_group = ifelse(age <= 35, '21-35',
+  ifelse(age <= 49, '36-49', '50+')))
+
+pima <- mutate(pima, age_group = as.factor(age_group))
+
+absolute_count_age <- table(pima$age_group)
+relative_count_age <- round(prop.table(absolute_count_age), digits = 2)
+
+absolute_count_age
+relative_count_age
+```
+
+## Доверительный интервал для pedigree
+
+```{r}
+doverie <- quantile(pima$pedigree, probs = c(0.05, 0.95))
+cat('90% доверительный интервал для переменной pedigree:',unname(doverie))
+```
+
+## Постройте график плотности вероятности для переменной `glucose` и отметьте на нем среднее значение. Для той же переменной постройте гистограмму. Постройте два ящика с усами для значений `pos` и `neg` соответственно переменной `diabetes`
+
+```{r}
+library(ggplot2)
+density_plot <- ggplot(data=pima, aes(x = glucose)) +
+  geom_density(fill = "lightblue", alpha = 0.6) +
+  geom_vline(aes(xintercept = mean(glucose)), color = 'red', linetype = 'dashed', linewidth = 1) +
+  labs(title = "Плотность вероятности переменной glucose",
+       x = "Глюкоза", y = "Плотность") +
+  theme_minimal()
+density_plot
+```
+
+```{r}
+histogram_glucose <-  ggplot(pima, aes(x = glucose))+
+  geom_histogram(binwidth = 5, fill = 'lightblue', color = 'black', alpha = 0.5)+
+  labs(title = 'Гистграмма переменной glucose', x= 'Глюкоза', y= 'Частота')+
+  theme_minimal()
+histogram_glucose
+```
+
+```{r}
+boxplot_diabites <- ggplot(data = pima, aes(x=diabetes, y = glucose, fill = diabetes)) +
+  geom_boxplot()+
+  labs(title = 'Ящики с усами для переменной diaetes', x= 'Диабет', y= 'Глюкоза')
+print(boxplot_diabites)
+```
+
+## Постройте на одном графике две диаграммы рассеяния для наличия или отсутствия диабета. По оси X представьте значения обхвата трицепса, а по оси Y — массу тела. Выполните окрашивание, заливку и группирование по переменной `diabetes`
+
+```{r}
+scatter_plots <-  ggplot(pima, aes(x = triceps, y = mass, color = diabetes, fill = diabetes))+
+  geom_point(color= 'black' ,shape = 21, size = 4, alpha = 0.8)+
+  labs(title = 'Диаграмма рассеивания для наличия диабета',
+       x = 'Обхват трицепса',
+       y = 'масса тела ',
+       color='Диабет',
+       fill = 'Диабет')+
+  scale_fill_manual(values = c('pos' = 'lightblue', 'neg' = 'pink'))+
+  theme_minimal()
+  
+print(scatter_plots)
+```
